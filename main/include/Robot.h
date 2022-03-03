@@ -17,6 +17,13 @@
 #include <frc/Timer.h>
 #include <string>
 #include <frc/Solenoid.h>
+#include <frc/smartdashboard/SmartDashboard.h>
+#include "frc/smartdashboard/Smartdashboard.h"
+#include "networktables/NetworkTable.h"
+#include "networktables/NetworkTableInstance.h"
+#include "networktables/NetworkTableEntry.h"
+#include "networktables/NetworkTableValue.h"
+#include "wpi/span.h"
 
 class Robot : public frc::TimedRobot {
  public:
@@ -32,9 +39,10 @@ class Robot : public frc::TimedRobot {
   // Drive(Left side speed (-1 to 1), right side speed (-1 to 1))
   void Drive(float left, float right, int state);
   void stack(int up, int down);
-  void climber();
+  void climber(int up, int down);
   void arm(int in, int out);
-  
+  void shoot(float speed1, float speed2);
+
   void DisabledInit() override;
   void DisabledPeriodic() override;
 
@@ -53,9 +61,12 @@ class Robot : public frc::TimedRobot {
 
   WPI_TalonSRX m_stack{7};
   WPI_TalonSRX m_arm{13};
+  WPI_TalonSRX m_shooter{12};
 
   WPI_TalonFX m_l1{1};
   WPI_TalonFX m_l2{2};
+  
+  WPI_TalonFX m_climber{5};
   
   frc::Solenoid downSolenoid{frc::PneumaticsModuleType::CTREPCM, 0};
   frc::Solenoid upSolenoid{frc::PneumaticsModuleType::CTREPCM, 1};
@@ -72,6 +83,9 @@ class Robot : public frc::TimedRobot {
   int currentState2 = 0;
   int nextState2 = 1;
   int swap2;
+
+  float currLeft = 0;
+  float currRight = 0;
 
   std::string _songs[14] = {"tokyo.chrp","roll4.chrp","cantina.chrp","stand.chrp","iran.chrp","cruel.chrp","drift.chrp","march3.chrp","mega.chrp","roll1.chrp","shrek.chrp","tom.chrp", "ussr.chrp","wii.chrp",};
 };
