@@ -4,16 +4,10 @@
 
 #pragma once
 
-//Included with timed robot skeleton
 #include <frc/TimedRobot.h>
-//Used to interface with xbox controller
 #include <frc/XboxController.h>
-//used to control talonSRX and falcon500(talonFX)
-//must be added as a vendor library improtant
 #include <ctre/Phoenix.h>
-//output text library
 #include <iostream>
-//timer library
 #include <frc/Timer.h>
 #include <string>
 #include <frc/Solenoid.h>
@@ -24,6 +18,9 @@
 #include "networktables/NetworkTableEntry.h"
 #include "networktables/NetworkTableValue.h"
 #include "wpi/span.h"
+#include <chrono>
+#include <thread>
+#include <math.h>
 
 class Robot : public frc::TimedRobot {
  public:
@@ -41,7 +38,10 @@ class Robot : public frc::TimedRobot {
   void stack(int up, int down);
   void climber(int up, int down);
   void arm(int in, int out);
-  void shoot(float speed1, float speed2);
+  void shoot(float speed1, float speed2, int reverse);
+  void getDistance();
+  void autoDrive(float left, float right);
+  void rangeFind(float less, float more);
 
   void DisabledInit() override;
   void DisabledPeriodic() override;
@@ -61,7 +61,7 @@ class Robot : public frc::TimedRobot {
 
   WPI_TalonSRX m_stack{7};
   WPI_TalonSRX m_arm{13};
-  WPI_TalonSRX m_shooter{12};
+  WPI_TalonSRX m_shooter{15};
 
   WPI_TalonFX m_l1{1};
   WPI_TalonFX m_l2{2};
@@ -79,6 +79,13 @@ class Robot : public frc::TimedRobot {
   int swap;
 
   bool load = false; 
+  bool fired = false;
+  bool stage0 = false;
+  bool stage1 = false;
+  bool stage1_5 = false;
+  bool stage2 = false;
+  bool stage3 = false;
+  bool stage4 = false;
 
   int currentState2 = 0;
   int nextState2 = 1;
@@ -86,6 +93,14 @@ class Robot : public frc::TimedRobot {
 
   float currLeft = 0;
   float currRight = 0;
+
+  double HeightToTarget = 103;
+  double HeightToCamera = 23.75;
+  double CameraAngle = 28;
+  double DistanceToBumper = 12;
+  double distance;
+  double goalAngleDEG;
+  double goalAngleRAD;
 
   std::string _songs[14] = {"tokyo.chrp","roll4.chrp","cantina.chrp","stand.chrp","iran.chrp","cruel.chrp","drift.chrp","march3.chrp","mega.chrp","roll1.chrp","shrek.chrp","tom.chrp", "ussr.chrp","wii.chrp",};
 };

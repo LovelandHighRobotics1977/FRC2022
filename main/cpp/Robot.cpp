@@ -5,9 +5,9 @@
 #include "Robot.h"
 #include <chrono>
 #include <thread>
+#include <math.h>
 
-void Robot::RobotInit() {
-}
+void Robot::RobotInit() {}
 void Robot::RobotPeriodic() {}
 
 void Robot::AutonomousInit() {
@@ -72,51 +72,66 @@ void Robot::AutonomousInit() {
 }
 
 void Robot::AutonomousPeriodic() {
-  float autoSpeed = 300;
-  bool targeted = false;
+  nt::NetworkTableInstance::GetDefault().GetTable("limelight")->PutNumber("pipeline",0);
+  nt::NetworkTableInstance::GetDefault().GetTable("limelight")->PutNumber("ledMode",3);
+
   double targetOffsetAngle_Horizontal = nt::NetworkTableInstance::GetDefault().GetTable("limelight")->GetNumber("tx",0.0);
   double targetOffsetAngle_Vertical = nt::NetworkTableInstance::GetDefault().GetTable("limelight")->GetNumber("ty",0.0);;
   double targetArea = nt::NetworkTableInstance::GetDefault().GetTable("limelight")->GetNumber("ta",0.0);
   double targetSkew = nt::NetworkTableInstance::GetDefault().GetTable("limelight")->GetNumber("ts",0.0);
   double validTarget = nt::NetworkTableInstance::GetDefault().GetTable("limelight")->GetNumber("tv",0.0);
 
-  m_l1.SetNeutralMode(NeutralMode::Brake);
-  m_l2.SetNeutralMode(NeutralMode::Brake);
-  m_r2.SetNeutralMode(NeutralMode::Brake);
-  m_r1.SetNeutralMode(NeutralMode::Brake);
+  //getDistance();
 
-  nt::NetworkTableInstance::GetDefault().GetTable("limelight")->PutNumber("pipeline",0);
-  nt::NetworkTableInstance::GetDefault().GetTable("limelight")->PutNumber("ledMode",3);
-  
+  if(stage0 == false){
+      //stack(1,0);
+      upSolenoid.Set(false);
+      downSolenoid.Set(true);
+      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+      upSolenoid.Set(false);
+      downSolenoid.Set(false);
+      arm(1,0);
+      stage0 = true;
+      stage1 = true;
+    }
 
-  if((nt::NetworkTableInstance::GetDefault().GetTable("limelight")->GetNumber("tv",0.0) != 1)){
-    m_l1.Set(-.2);
-    m_l2.Set(-.2);
-
-    m_r1.Set(-.2);
-    m_r2.Set(-.2);
-  }else{
-    if(nt::NetworkTableInstance::GetDefault().GetTable("limelight")->GetNumber("tx",0.0) < -10){
-      m_l1.Set(-.2);
-      m_l2.Set(-.2);
-
-      m_r1.Set(-.2);
-      m_r2.Set(-.2);
-    }else if(nt::NetworkTableInstance::GetDefault().GetTable("limelight")->GetNumber("tx",0.0) > 10){
-      m_l1.Set(.1);
-      m_l2.Set(.1);
-
-      m_r1.Set(.1);
-      m_r2.Set(.1);
+  if(fired == false){
+    getDistance();
+    if(((distance < 129)||(distance > 133))&&(stage1 == true)){
+      rangeFind(129,133);
     }else{
-      m_l1.Set(0);
-      m_l2.Set(0);
-
-      m_r1.Set(0);
-      m_r2.Set(0);
+      stage1 = false;
+      getDistance();
+      if(((distance < 98)||(distance > 101))&&(stage2 == false)){
+        shoot(0,0,0);
+        stack(0,0);
+        getDistance();
+        rangeFind(98,101);
+      }else{
+        stage2 = true;
+        stack(1,0);
+        upSolenoid.Set(true);
+        downSolenoid.Set(false);
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        upSolenoid.Set(false);
+        downSolenoid.Set(false);
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        stack(0,0);
+        arm(0,0);
+        stack(0,1);
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        stack(0,0);
+        autoDrive(0,0);
+        shoot(0,1,0);
+        std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+        stack(1,0);
+        std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+        shoot(0,0,0);
+        stack(0,0);
+        fired = true;
+      }
     }
   }
-
 }
 
 void Robot::TeleopInit() {
@@ -152,7 +167,7 @@ void Robot::TeleopPeriodic() {
   stack(m_driverController2.GetAButton(),m_driverController2.GetBButton());
   arm(m_driverController2.GetXButton(),m_driverController2.GetYButton());
   climber(m_driverController.GetYButton(),m_driverController.GetAButton());
-  shoot(m_driverController2.GetRightTriggerAxis(),m_driverController2.GetLeftTriggerAxis());
+  shoot(m_driverController2.GetLeftTriggerAxis(),m_driverController2.GetRightTriggerAxis(), m_driverController2.GetStartButton());
 
   if(m_driverController2.GetBackButton() == 1){
     upSolenoid.Set(true);
@@ -218,9 +233,9 @@ void Robot::Drive(float left, float right, int state){
 void Robot::climber(int up, int down){
   m_climber.SetNeutralMode(NeutralMode::Brake);
   if(up==1){
-    m_climber.Set(.4);
+    m_climber.Set(1);
   }else if(down==1){
-    m_climber.Set(-.4);
+    m_climber.Set(-1);
   }else{
     m_climber.Set(0);
   }
@@ -239,23 +254,62 @@ void Robot::stack(int up, int down){
 
 void Robot::arm(int in, int out){
   if((in==1) && (out==0)){
-    m_arm.Set(1);
+    m_arm.Set(.7);
   }else if((in==0) && (out==1)){
-    m_arm.Set(-1);
+    m_arm.Set(-.7);
   }else{
     m_arm.Set(0);
   }
 }
 
-void Robot::shoot(float speed1, float speed2){
-  if(speed1 > .7){
-    m_shooter.Set(1);
-  }else if(speed2 > .7){
-    m_shooter.Set(.5);
+void Robot::shoot(float speed1, float speed2, int reverse){
+  if(speed1 > .1){
+    m_shooter.Set(speed1);
+  }else if(speed2 > .5){
+    m_shooter.Set(.55);
+  }else if(reverse == 1){
+    m_shooter.Set(-1);
   }else{
     m_shooter.Set(0);
   }
+ //std::cout<<"Shooter speed:"<<speed1<<std::endl;
+}
 
+void Robot::getDistance(){
+  double targetOffsetAngle_Vertical = nt::NetworkTableInstance::GetDefault().GetTable("limelight")->GetNumber("ty",0.0);
+
+  goalAngleDEG = (CameraAngle + targetOffsetAngle_Vertical);
+  goalAngleRAD = (goalAngleDEG * (3.14159 / 180.0));
+
+  distance = ((HeightToTarget - HeightToCamera)/tan(goalAngleRAD));
+  std::cout<<"Distance: "<<distance<<std::endl;
+}
+
+void Robot::autoDrive(float left, float right){
+  //setting motor speeds to parameters
+  m_l1.SetNeutralMode(NeutralMode::Brake);
+  m_l2.SetNeutralMode(NeutralMode::Brake);
+  m_r2.SetNeutralMode(NeutralMode::Brake);
+  m_r1.SetNeutralMode(NeutralMode::Brake);
+    m_l1.Set(-left);
+    m_l2.Set(-left);
+
+    m_r1.Set(right);
+    m_r2.Set(right);
+}
+
+void Robot::rangeFind(float less, float more){
+  getDistance();
+    if((distance < less)||(distance > more)){
+      getDistance();
+      if(distance < less){
+        autoDrive(-.1,-.1);
+      }
+      getDistance();
+      if(distance > more){
+        autoDrive(.1,.1);
+      }
+    }
 }
 
 #ifndef RUNNING_FRC_TESTS
