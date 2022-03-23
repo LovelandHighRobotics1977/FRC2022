@@ -7,7 +7,9 @@
 #include <thread>
 #include <math.h>
 
-void Robot::RobotInit() {}
+void Robot::RobotInit() {
+  frc::CameraServer::StartAutomaticCapture();
+}
 void Robot::RobotPeriodic() {}
 
 void Robot::AutonomousInit() {
@@ -97,16 +99,16 @@ void Robot::AutonomousPeriodic() {
 
   if(fired == false){
     getDistance();
-    if(((distance < 129)||(distance > 133))&&(stage1 == true)){
+    if(((distance < 120)||(distance > 125))&&(stage1 == true)){
       rangeFind(129,133);
     }else{
       stage1 = false;
       getDistance();
-      if(((distance < 98)||(distance > 101))&&(stage2 == false)){
+      if(((distance < 115)||(distance > 117))&&(stage2 == false)){
         shoot(0,0,0);
         stack(0,0);
         getDistance();
-        rangeFind(98,101);
+        rangeFind(115,117);
       }else{
         stage2 = true;
         stack(1,0);
@@ -125,7 +127,11 @@ void Robot::AutonomousPeriodic() {
         shoot(0,1,0);
         std::this_thread::sleep_for(std::chrono::milliseconds(2000));
         stack(1,0);
-        std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+        std::this_thread::sleep_for(std::chrono::milliseconds(800));
+        stack(0,0);
+        std::this_thread::sleep_for(std::chrono::milliseconds(300));
+        stack(1,0);
+        std::this_thread::sleep_for(std::chrono::milliseconds(800));
         shoot(0,0,0);
         stack(0,0);
         fired = true;
@@ -142,6 +148,11 @@ void Robot::TeleopInit() {
 }
 void Robot::TeleopPeriodic() {
   //calling drive with xbox stick input
+  nt::NetworkTableInstance::GetDefault().GetTable("limelight")->PutNumber("pipeline",0);
+  nt::NetworkTableInstance::GetDefault().GetTable("limelight")->PutNumber("ledMode",3);
+
+  getDistance();
+
   if(m_driverController.GetStartButton() == 1){
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
     swap = currentState;
@@ -221,7 +232,7 @@ void Robot::Drive(float left, float right, int state){
     m_r1.Set(fullSpeedPer * right);
     m_r2.Set(fullSpeedPer * right);
   } else if(currentState2 == 1){
-    float perSpeed = .2;
+    float perSpeed = .3;
     m_l1.Set(-perSpeed * left);
     m_l2.Set(-perSpeed * left);
 
@@ -265,18 +276,21 @@ void Robot::arm(int in, int out){
 void Robot::shoot(float speed1, float speed2, int reverse){
   if(speed1 > .1){
     m_shooter.Set(speed1);
+    //m_shooter.Set(.3);
   }else if(speed2 > .5){
-    m_shooter.Set(.55);
+    m_shooter.Set(.57);
   }else if(reverse == 1){
     m_shooter.Set(-1);
   }else{
     m_shooter.Set(0);
   }
- //std::cout<<"Shooter speed:"<<speed1<<std::endl;
+ std::cout<<"Shooter speed:"<<speed1<<std::endl;
 }
 
 void Robot::getDistance(){
-  double targetOffsetAngle_Vertical = nt::NetworkTableInstance::GetDefault().GetTable("limelight")->GetNumber("ty",0.0);
+  float targetOffsetAngle_Vertical = nt::NetworkTableInstance::GetDefault().GetTable("limelight")->GetNumber("ty",0.0);
+
+  //std::cout<<targetOffsetAngle_Vertical<<std::endl;
 
   goalAngleDEG = (CameraAngle + targetOffsetAngle_Vertical);
   goalAngleRAD = (goalAngleDEG * (3.14159 / 180.0));

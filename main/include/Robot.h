@@ -21,6 +21,7 @@
 #include <chrono>
 #include <thread>
 #include <math.h>
+#include <cameraserver/CameraServer.h>
 
 class Robot : public frc::TimedRobot {
  public:
@@ -95,8 +96,8 @@ class Robot : public frc::TimedRobot {
   float currRight = 0;
 
   double HeightToTarget = 103;
-  double HeightToCamera = 23.75;
-  double CameraAngle = 28;
+  double HeightToCamera = 24.5;
+  double CameraAngle = 48.85;
   double DistanceToBumper = 12;
   double distance;
   double goalAngleDEG;
